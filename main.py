@@ -51,15 +51,18 @@ def main(args):
     # temporary
     if not model:
         raise Exception('CapsNet in progress')
-    
+    ckpt_name = os.path.join(args.ckpt_dir,
+                                '{}_{}'.format(model_name,dataset_name)+'.pth.tar'
+    if os.path.isfile(ckpt_name):
+                             base_trainer.load(filename = ckpt_name)    
     model.to(device)
     base_loss = nn.CrossEntropyLoss()
     base_optimizer = optim.SGD(model.parameters(), lr=args.lr)
     base_trainer = Trainer(model, base_optimizer, base_loss,
                         trainloader, testloader, use_cuda=args.cuda)
     base_trainer.run(epochs=args.epoch)
-    base_trainer.save_checkpoint(os.path.join(args.ckpt_dir,
-                                '{}_{}'.format(model_name,dataset_name)+'.pth.tar'))
+
+    base_trainer.save_checkpoint(ckpt_name)
 
     
 if __name__ == '__main__':

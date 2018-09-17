@@ -1,4 +1,3 @@
-"""adversary.py"""
 from pathlib import Path
 
 import torch
@@ -92,15 +91,8 @@ class Attack(object):
                 p_ygx = F.softmax(logit, dim=1)
                 H_ygx = (-p_ygx*torch.log(self.eps+p_ygx)).sum(1).mean(0)
                 prediction_cost = H_ygx
-                #prediction_cost = F.cross_entropy(logit,y)
-                #perceptual_cost = -F.l1_loss(x+r,x)
-                #perceptual_cost = -F.mse_loss(x+r,x)
-                #perceptual_cost = -F.mse_loss(x+r,x) -r.norm()
                 perceptual_cost = -F.mse_loss(x+r, x) -F.relu(r.norm()-5)
-                #perceptual_cost = -F.relu(r.norm()-5.)
-                #if perceptual_cost.data[0] < 10: perceptual_cost.data.fill_(0)
                 cost = prediction_cost + perceptual_cost
-                #cost = prediction_cost
 
                 self.net.zero_grad()
                 if r.grad:
@@ -114,12 +106,12 @@ class Attack(object):
 
 
                 prediction = logit.max(1)[1]
-                correct = torch.eq(prediction, y).float().mean().data[0]
+                correct = torch.eq(prediction, y).float().mean().item()
                 if batch_idx % 100 == 0:
                     if self.visdom:
                         self.vf.imshow_multi(x.add(r).data)
                         #self.vf.imshow_multi(r.unsqueeze(0).data,factor=4)
-                    print(correct*100, prediction_cost.data[0], perceptual_cost.data[0],\
-                            r.norm().data[0])
+                    print(correct*100, prediction_cost.data.item(), perceptual_cost.data.item(),\
+                            r.norm().item())
 
         self.set_mode('train')

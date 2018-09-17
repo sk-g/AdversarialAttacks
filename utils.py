@@ -3,6 +3,8 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 
+import sys
+import tqdm
 import torch
 from torch import nn
 from torch.autograd import Variable
@@ -14,10 +16,6 @@ def plot_tensor(img, fs=(8, 8), title=''):
     if type(img) == Variable:
         img = img.data
     img = img.cpu()
-#     if torch.tensor._TensorBase in type(img).__bases__:
-#         npimg = img.numpy()
-#     else:
-#         npimg = img
     npimg = img.numpy()
     if len(npimg.shape) == 4:
         npimg = npimg[0]
@@ -79,7 +77,18 @@ class Trainer():
             },
         }
         self.print_every = print_every
-    
+    @staticmethod
+    def drawProgressBar(percent, barLen = 50):
+        sys.stdout.write("\r")
+        progress = ""
+        for i in range(barLen):
+            if i<int(barLen * percent):
+                progress += "="
+            else:
+                progress += " "
+        sys.stdout.write("[ %s ] %.2f%%" % (progress, percent * 100))
+        sys.stdout.flush()
+        
     def run(self, epochs):
         print('[*] Training for %d epochs' % epochs)
         for epoch in range(1, epochs+1):
@@ -110,6 +119,7 @@ class Trainer():
         cum_loss = 0
         cum_acc = 0
         for i, (X, y) in enumerate(loader):
+            Trainer.drawProgressBar(i/n_batches)
             X_var = self.make_var(X)
             y_var = self.make_var(one_hotify(y) if self.one_hot else y)
 
@@ -126,12 +136,14 @@ class Trainer():
                 self.optimizer.step()
 
             pred = get_argmax(scores)
-            acc = get_accuracy(pred, y)
+            #acc = get_accuracy(pred, y)
+            acc = torch.eq(pred, y).float().mean().data.item()
+
             loss = loss_var.data.item()
             cum_acc += acc
             cum_loss += loss
             
-            if self.print_every is not None and i % self.print_every == 0:
+            if self.print_every and i % self.print_every == 0:
                 print('[*] Batch %d, Loss: %.3f, Acc: %.3f' % (i, loss, acc))
         
         return cum_loss / n_batches, cum_acc / n_batches

@@ -45,13 +45,13 @@ def get_cifar10_dataset(trn_size=60000, tst_size=10000):
         'train': T.Compose([
             T.RandomResizedCrop(224),
             T.RandomHorizontalFlip(),
-            T.ToTensor()
+            T.ToTensor(),
             T.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
         ]),
         'val': T.Compose([
             T.Resize(256),
             T.CenterCrop(224),
-            T.ToTensor()
+            T.ToTensor(),
             T.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5])
         ]),
     }

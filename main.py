@@ -11,7 +11,7 @@ from datasets import get_mnist_dataset, get_cifar10_dataset, get_data_loader
 from utils import *
 from parser_utils import str2bool
 from models import resnet, pyt_resnet
-
+from attacks import *
 def main(args):
     print(args)
     # setting device
@@ -52,17 +52,24 @@ def main(args):
     if not model:
         raise Exception('CapsNet in progress')
     ckpt_name = os.path.join(args.ckpt_dir,
-                                '{}_{}'.format(model_name,dataset_name)+'.pth.tar'
+                                '{}_{}'.format(model_name,dataset_name)+'.pth.tar')
     if os.path.isfile(ckpt_name):
-                             base_trainer.load(filename = ckpt_name)    
+        base_trainer.load(filename = ckpt_name)    
     model.to(device)
+    fname = os.path.join('checkpoints','{}_{}'.format('resnet18_v2','cifar10')+'.pth.tar')
     base_loss = nn.CrossEntropyLoss()
     base_optimizer = optim.SGD(model.parameters(), lr=args.lr)
     base_trainer = Trainer(model, base_optimizer, base_loss,
                         trainloader, testloader, use_cuda=args.cuda)
-    base_trainer.run(epochs=args.epoch)
-
-    base_trainer.save_checkpoint(ckpt_name)
+    base_trainer.load_checkpoint(fname)
+    # base_trainer.run(epochs=1)
+    #base_trainer.save_checkpoint(ckpt_name)
+    #create attack instance
+    attack = Attack(model = base_trainer.model,criterion = base_loss,cuda = True)
+    att_args = {'attack':'FGS','n_iters' : 1}
+    #def generate_example(self, seed_img, attack, target=None, ground=None, **kwargs):
+    for i in range(len(batch_var)):
+        img,ix = attack.generate_example(batch_var[i],ground =labels_var[i],**att_args)
 
     
 if __name__ == '__main__':

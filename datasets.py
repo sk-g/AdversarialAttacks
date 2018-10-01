@@ -70,4 +70,6 @@ def get_data_loader(trainset, testset, batch_size=32):
                              shuffle=True)
     testloader = DataLoader(testset, batch_size=batch_size,
                             shuffle=False)
-    return trainloader, testloader
+    data_loader = {'train':trainloader,
+                    'test':testloader}
+    return data_loader

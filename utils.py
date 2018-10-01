@@ -1,56 +1,80 @@
-import os
-
-import matplotlib.pyplot as plt
-import numpy as np
-
-import sys
-import tqdm
+import argparse
 import torch
+import os
+import numpy as np
 from torch import nn
 from torch.autograd import Variable
-import torchvision
+from pathlib import Path
+
+class One_Hot(nn.Module):
+    # from :
+    # https://lirnli.wordpress.com/2017/09/03/one-hot-encoding-in-pytorch/
+    def __init__(self, depth):
+        super(One_Hot,self).__init__()
+        self.depth = depth
+        self.ones = torch.eye(depth)
+    def forward(self, X_in):
+        X_in = X_in.long()
+        return Variable(self.ones.index_select(0,X_in.data))
+    def __repr__(self):
+        return self.__class__.__name__ + "({})".format(self.depth)
 
 
-def plot_tensor(img, fs=(8, 8), title=''):
-    # preprocess input
-    if type(img) == Variable:
-        img = img.data
-    img = img.cpu()
-    npimg = img.numpy()
-    if len(npimg.shape) == 4:
-        npimg = npimg[0]
-    npimg = npimg.transpose(1, 2, 0)
-    plt.figure(figsize=fs)
-    if npimg.shape[2] > 1:
-        plt.imshow(npimg)
+def cuda(tensor,is_cuda):
+    if is_cuda : return tensor.cuda()
+    else : return tensor
+
+def str2bool(v):
+    # codes from : https://stackoverflow.com/questions/15008758/parsing-boolean-values-with-argparse
+
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
     else:
-        npimg = npimg.squeeze()
-        plt.imshow(npimg, cmap='gray')
-    plt.title(title)
-    plt.axis('off')
-    plt.show()
+        raise argparse.ArgumentTypeError('Boolean value expected.')
 
-def plot_batch(samples):
-    sample_grid = torchvision.utils.make_grid(samples)
-    plot_tensor(sample_grid)
 
+def print_network(net):
+    num_params = 0
+    for param in net.parameters():
+        num_params += param.numel()
+    print(net)
+    print('Total number of parameters: %d' % num_params)
+
+
+def rm_dir(dir_path, silent=True):
+    p = Path(dir_path).resolve()
+    if (not p.is_file()) and (not p.is_dir()) :
+        print('It is not path for file nor directory :',p)
+        return
+
+    paths = list(p.iterdir())
+    if (len(paths) == 0) and p.is_dir() :
+        p.rmdir()
+        if not silent : print('removed empty dir :',p)
+
+    else :
+        for path in paths :
+            if path.is_file() :
+                path.unlink()
+                if not silent : print('removed file :',path)
+            else:
+                rm_dir(path)
+        p.rmdir()
+        if not silent : print('removed empty dir :',p)
+
+def where(cond, x, y):
+    """
+    code from :
+        https://discuss.pytorch.org/t/how-can-i-do-the-operation-the-same-as-np-where/1329/8
+    """
+    cond = cond.float()
+    return (cond*x) + ((1-cond)*y)
 def one_hotify(x, n_classes=10):
     x_long = torch.LongTensor(x)
-    #x_onehot = torch.sparse.torch.eye(n_classes).index_select(0, x_long)
     x_onehot = torch.eye(n_classes).index_select(0, x_long)
     return x_onehot
-    
-def get_argmax(scores):
-    val, idx = torch.max(scores, dim=1)
-    return idx.data.view(-1).cpu()
-
-def get_accuracy(pred, target):
-    correct = torch.sum(pred == target)
-    return correct / pred.size(0)
-
-def count_params(model):
-    return sum(p.numel() for p in model.parameters())
-
 class Trainer():
     def __init__(self, model, optimizer, criterion,
                  trn_loader, tst_loader,
